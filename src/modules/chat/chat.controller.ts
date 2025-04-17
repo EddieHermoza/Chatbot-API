@@ -21,7 +21,7 @@ export class ChatController {
     });
   }
 
-  @Post('send')
+  @Post('/send')
   async sendMessage(@Body() body: { userId: string; message: string }) {
     const { userId, message } = body;
 
@@ -58,6 +58,6 @@ export class ChatController {
       },
     });
 
-    return;
+    return { status: 'ok' };
   }
 }

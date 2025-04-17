@@ -19,6 +19,7 @@ const chat_service_1 = require("./chat.service");
 const request_chat_dto_1 = require("./dto/request-chat.dto");
 const supabase_service_1 = require("../supabase/supabase.service");
 const stack_ai_service_1 = require("../stack-ai/stack-ai.service");
+const assert_1 = require("assert");
 let ChatController = class ChatController {
     constructor(chatService, supabaseService, stackAIService) {
         this.chatService = chatService;
@@ -64,7 +65,7 @@ let ChatController = class ChatController {
                 });
             },
         });
-        return;
+        return { status: assert_1.ok };
     }
 };
 exports.ChatController = ChatController;
