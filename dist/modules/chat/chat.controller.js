@@ -35,6 +35,7 @@ let ChatController = class ChatController {
     async sendMessage(body) {
         const { userId, message } = body;
         const channel = this.supabaseService.getClient().channel(`chat:${userId}`);
+        console.log(channel);
         console.log({ userId, message });
         channel.subscribe((status) => {
             if (status === 'SUBSCRIBED') {
