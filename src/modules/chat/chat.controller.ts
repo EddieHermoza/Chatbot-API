@@ -27,30 +27,30 @@ export class ChatController {
 
     const channel = this.supabaseService.getClient().channel(`chat:${userId}`);
 
-    await channel.subscribe((status) => {
+    channel.subscribe((status) => {
       if (status === 'SUBSCRIBED') {
         console.log(`📡 Subscrito a chat:${userId}`);
       }
     });
 
     this.stackAIService.streamQuery({ userId, 'in-0': message }).subscribe({
-      next: async (chunk) => {
-        await channel.send({
+      next: (chunk) => {
+        channel.send({
           type: 'broadcast',
           event: 'chatStreamChunk',
           payload: { chunk },
         });
       },
-      complete: async () => {
-        await channel.send({
+      complete: () => {
+        channel.send({
           type: 'broadcast',
           event: 'chatStreamEnd',
           payload: {},
         });
       },
-      error: async (err) => {
+      error: (err) => {
         console.error('Error en stream:', err);
-        await channel.send({
+        channel.send({
           type: 'broadcast',
           event: 'chatStreamError',
           payload: { error: err.message },
