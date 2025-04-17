@@ -34,7 +34,7 @@ export class StackAIService {
           responseType: 'stream',
         })
         .subscribe({
-          next: (response) => {
+          next: async (response) => {
             const stream = response.data;
             stream.setEncoding('utf8');
 
