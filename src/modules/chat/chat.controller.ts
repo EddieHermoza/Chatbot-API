@@ -33,30 +33,32 @@ export class ChatController {
       }
     });
 
-    this.stackAIService.streamQuery({ userId, 'in-0': message }).subscribe({
-      next: (chunk) => {
-        channel.send({
-          type: 'broadcast',
-          event: 'chatStreamChunk',
-          payload: { chunk },
-        });
-      },
-      complete: () => {
-        channel.send({
-          type: 'broadcast',
-          event: 'chatStreamEnd',
-          payload: {},
-        });
-      },
-      error: (err) => {
-        console.error('Error en stream:', err);
-        channel.send({
-          type: 'broadcast',
-          event: 'chatStreamError',
-          payload: { error: err.message },
-        });
-      },
-    });
+    await this.stackAIService
+      .streamQuery({ userId, 'in-0': message })
+      .subscribe({
+        next: (chunk) => {
+          channel.send({
+            type: 'broadcast',
+            event: 'chatStreamChunk',
+            payload: { chunk },
+          });
+        },
+        complete: () => {
+          channel.send({
+            type: 'broadcast',
+            event: 'chatStreamEnd',
+            payload: {},
+          });
+        },
+        error: (err) => {
+          console.error('Error en stream:', err);
+          channel.send({
+            type: 'broadcast',
+            event: 'chatStreamError',
+            payload: { error: err.message },
+          });
+        },
+      });
 
     return { status: 'ok' };
   }
