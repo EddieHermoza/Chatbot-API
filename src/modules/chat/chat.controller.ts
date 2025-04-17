@@ -36,7 +36,7 @@ export class ChatController {
     await this.stackAIService
       .streamQuery({ userId, 'in-0': message })
       .subscribe({
-        next: (chunk) => {
+        next: async (chunk) => {
           channel.send({
             type: 'broadcast',
             event: 'chatStreamChunk',

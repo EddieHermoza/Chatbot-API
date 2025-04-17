@@ -19,7 +19,6 @@ const chat_service_1 = require("./chat.service");
 const request_chat_dto_1 = require("./dto/request-chat.dto");
 const supabase_service_1 = require("../supabase/supabase.service");
 const stack_ai_service_1 = require("../stack-ai/stack-ai.service");
-const assert_1 = require("assert");
 let ChatController = class ChatController {
     constructor(chatService, supabaseService, stackAIService) {
         this.chatService = chatService;
@@ -36,36 +35,39 @@ let ChatController = class ChatController {
     async sendMessage(body) {
         const { userId, message } = body;
         const channel = this.supabaseService.getClient().channel(`chat:${userId}`);
-        await channel.subscribe((status) => {
+        console.log({ userId, message });
+        channel.subscribe((status) => {
             if (status === 'SUBSCRIBED') {
                 console.log(`📡 Subscrito a chat:${userId}`);
             }
         });
-        this.stackAIService.streamQuery({ userId, 'in-0': message }).subscribe({
+        await this.stackAIService
+            .streamQuery({ userId, 'in-0': message })
+            .subscribe({
             next: async (chunk) => {
-                await channel.send({
+                channel.send({
                     type: 'broadcast',
                     event: 'chatStreamChunk',
                     payload: { chunk },
                 });
             },
-            complete: async () => {
-                await channel.send({
+            complete: () => {
+                channel.send({
                     type: 'broadcast',
                     event: 'chatStreamEnd',
                     payload: {},
                 });
             },
-            error: async (err) => {
+            error: (err) => {
                 console.error('Error en stream:', err);
-                await channel.send({
+                channel.send({
                     type: 'broadcast',
                     event: 'chatStreamError',
                     payload: { error: err.message },
                 });
             },
         });
-        return { status: assert_1.ok };
+        return { status: 'ok' };
     }
 };
 exports.ChatController = ChatController;
@@ -78,7 +80,7 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], ChatController.prototype, "sendQuery", null);
 __decorate([
-    (0, common_1.Post)('send'),
+    (0, common_1.Post)('/send'),
     openapi.ApiResponse({ status: 201 }),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
