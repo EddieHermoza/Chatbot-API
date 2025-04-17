@@ -25,41 +25,45 @@ export class ChatController {
   async sendMessage(@Body() body: { userId: string; message: string }) {
     const { userId, message } = body;
 
-    const channel = this.supabaseService.getClient().channel(`chat:${userId}`);
+    const channel = this.supabaseService.getClient().channel(`chat:${userId}`, {
+      config: {
+        broadcast: { self: true },
+      },
+    });
     console.log(channel);
     console.log({ userId, message });
-    channel.subscribe((status) => {
+    await channel.subscribe((status) => {
       if (status === 'SUBSCRIBED') {
         console.log(`📡 Subscrito a chat:${userId}`);
+      } else {
+        console.log(`📡 No se pudo subscribir a chat:${userId}`);
       }
     });
 
-    await this.stackAIService
-      .streamQuery({ userId, 'in-0': message })
-      .subscribe({
-        next: async (chunk) => {
-          channel.send({
-            type: 'broadcast',
-            event: 'chatStreamChunk',
-            payload: { chunk },
-          });
-        },
-        complete: () => {
-          channel.send({
-            type: 'broadcast',
-            event: 'chatStreamEnd',
-            payload: {},
-          });
-        },
-        error: (err) => {
-          console.error('Error en stream:', err);
-          channel.send({
-            type: 'broadcast',
-            event: 'chatStreamError',
-            payload: { error: err.message },
-          });
-        },
-      });
+    this.stackAIService.streamQuery({ userId, 'in-0': message }).subscribe({
+      next: async (chunk) => {
+        await channel.send({
+          type: 'broadcast',
+          event: 'chatStreamChunk',
+          payload: { chunk },
+        });
+      },
+      complete: async () => {
+        await channel.send({
+          type: 'broadcast',
+          event: 'chatStreamEnd',
+          payload: {},
+        });
+      },
+      error: async (err) => {
+        console.error('❌ Error en stream:', err);
+        await channel.send({
+          type: 'broadcast',
+          event: 'chatStreamError',
+          payload: { error: err.message },
+        });
+      },
+    });
 
     return { status: 'ok' };
   }
