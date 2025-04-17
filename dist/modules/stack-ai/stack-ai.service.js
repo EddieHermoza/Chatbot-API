@@ -18,9 +18,59 @@ const flow_id_reference_1 = require("./constants/flow-id-reference");
 const organization_id_reference_1 = require("./constants/organization-id-reference");
 const api_keys_1 = require("./constants/api-keys");
 const FormData = require("form-data");
+const supabase_service_1 = require("../supabase/supabase.service");
 let StackAIService = class StackAIService {
-    constructor(httpService) {
+    constructor(httpService, supabase) {
         this.httpService = httpService;
+        this.supabase = supabase;
+    }
+    streamQuery(data) {
+        const url = `${stack_ai_base_url_1.STACK_AI_BASE_URL}/inference/v0/stream/${organization_id_reference_1.ORGANIZATION_ID_REFERENCE}/${flow_id_reference_1.FLOW_ID_REFERENCE}`;
+        return new rxjs_1.Observable((observer) => {
+            this.httpService
+                .post(url, data, {
+                headers: {
+                    Authorization: `Bearer ${api_keys_1.STACK_PUBLIC_API_KEY}`,
+                    'Content-Type': 'application/json',
+                },
+                responseType: 'stream',
+            })
+                .subscribe({
+                next: (response) => {
+                    const stream = response.data;
+                    stream.setEncoding('utf8');
+                    let buffer = '';
+                    stream.on('data', (chunk) => {
+                        buffer += chunk;
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop() || '';
+                        for (const line of lines) {
+                            try {
+                                if (line.trim() === '')
+                                    continue;
+                                const parsed = JSON.parse(line);
+                                const output = parsed.outputs?.['out-0'];
+                                if (output) {
+                                    observer.next(output);
+                                }
+                            }
+                            catch (err) {
+                                console.warn('Línea no parseable:', err);
+                            }
+                        }
+                    });
+                    stream.on('end', () => {
+                        observer.complete();
+                    });
+                    stream.on('error', (err) => {
+                        observer.error(err);
+                    });
+                },
+                error: (err) => {
+                    observer.error(err);
+                },
+            });
+        });
     }
     async query(data) {
         const url = `${stack_ai_base_url_1.STACK_AI_BASE_URL}/inference/v0/run/${organization_id_reference_1.ORGANIZATION_ID_REFERENCE}/${flow_id_reference_1.FLOW_ID_REFERENCE}`;
@@ -125,63 +175,11 @@ let StackAIService = class StackAIService {
             throw new common_1.ServiceUnavailableException('Error en la STACK AI API');
         }
     }
-    streamQuery(data) {
-        const url = `${stack_ai_base_url_1.STACK_AI_BASE_URL}/inference/v0/stream/${organization_id_reference_1.ORGANIZATION_ID_REFERENCE}/${flow_id_reference_1.FLOW_ID_REFERENCE}`;
-        return new rxjs_1.Observable((observer) => {
-            console.log('stream...');
-            this.httpService
-                .post(url, data, {
-                headers: {
-                    Authorization: `Bearer ${api_keys_1.STACK_PUBLIC_API_KEY}`,
-                    'Content-Type': 'application/json',
-                },
-                responseType: 'stream',
-            })
-                .subscribe({
-                next: (response) => {
-                    const stream = response.data;
-                    stream.setEncoding('utf8');
-                    let buffer = '';
-                    stream.on('data', (chunk) => {
-                        buffer += chunk;
-                        const lines = buffer.split('\n');
-                        buffer = lines.pop() || '';
-                        for (const line of lines) {
-                            try {
-                                if (line.trim() === '')
-                                    continue;
-                                const parsed = JSON.parse(line);
-                                const output = parsed.outputs?.['out-0'];
-                                if (output) {
-                                    observer.next(output);
-                                }
-                            }
-                            catch (err) {
-                                console.log(err);
-                                console.warn('Linea no parseable');
-                            }
-                        }
-                    });
-                    stream.on('end', () => {
-                        console.log('Stream finalizado');
-                        observer.complete();
-                    });
-                    stream.on('error', (err) => {
-                        console.error('Error:', err);
-                        observer.error(err);
-                    });
-                },
-                error: (err) => {
-                    console.error('Error:', err);
-                    observer.error(err);
-                },
-            });
-        });
-    }
 };
 exports.StackAIService = StackAIService;
 exports.StackAIService = StackAIService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [axios_1.HttpService])
+    __metadata("design:paramtypes", [axios_1.HttpService,
+        supabase_service_1.SupabaseService])
 ], StackAIService);
 //# sourceMappingURL=stack-ai.service.js.map

@@ -5,5 +5,7 @@ declare namespace NodeJS {
     DATABASE_URL: string;
     STACK_AI_API_PRIVATE_KEY: string;
     STACK_AI_API_KEY: string;
+    SUPABASE_URL: string;
+    SUPABASE_ANON_KEY: string;
   }
 }

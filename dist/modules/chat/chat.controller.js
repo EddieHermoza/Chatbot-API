@@ -17,10 +17,13 @@ const openapi = require("@nestjs/swagger");
 const common_1 = require("@nestjs/common");
 const chat_service_1 = require("./chat.service");
 const request_chat_dto_1 = require("./dto/request-chat.dto");
-const rxjs_1 = require("rxjs");
+const supabase_service_1 = require("../supabase/supabase.service");
+const stack_ai_service_1 = require("../stack-ai/stack-ai.service");
 let ChatController = class ChatController {
-    constructor(chatService) {
+    constructor(chatService, supabaseService, stackAIService) {
         this.chatService = chatService;
+        this.supabaseService = supabaseService;
+        this.stackAIService = stackAIService;
     }
     sendQuery(requestChatDto) {
         const { userId, message } = requestChatDto;
@@ -29,12 +32,39 @@ let ChatController = class ChatController {
             query: message,
         });
     }
-    sendStreamQuery(requestChatDto) {
-        const { userId, message } = requestChatDto;
-        return this.chatService.doSreamQuery({
-            userId: userId,
-            query: message,
+    async sendMessage(body) {
+        const { userId, message } = body;
+        const channel = this.supabaseService.getClient().channel(`chat:${userId}`);
+        await channel.subscribe((status) => {
+            if (status === 'SUBSCRIBED') {
+                console.log(`📡 Subscrito a chat:${userId}`);
+            }
         });
+        this.stackAIService.streamQuery({ userId, 'in-0': message }).subscribe({
+            next: async (chunk) => {
+                await channel.send({
+                    type: 'broadcast',
+                    event: 'chatStreamChunk',
+                    payload: { chunk },
+                });
+            },
+            complete: async () => {
+                await channel.send({
+                    type: 'broadcast',
+                    event: 'chatStreamEnd',
+                    payload: {},
+                });
+            },
+            error: async (err) => {
+                console.error('Error en stream:', err);
+                await channel.send({
+                    type: 'broadcast',
+                    event: 'chatStreamError',
+                    payload: { error: err.message },
+                });
+            },
+        });
+        return;
     }
 };
 exports.ChatController = ChatController;
@@ -47,16 +77,17 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], ChatController.prototype, "sendQuery", null);
 __decorate([
-    (0, common_1.Post)('/stream-query'),
-    (0, common_1.Sse)(),
-    openapi.ApiResponse({ status: 201, type: Object }),
+    (0, common_1.Post)('send'),
+    openapi.ApiResponse({ status: 201 }),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [request_chat_dto_1.RequestChatDto]),
-    __metadata("design:returntype", rxjs_1.Observable)
-], ChatController.prototype, "sendStreamQuery", null);
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], ChatController.prototype, "sendMessage", null);
 exports.ChatController = ChatController = __decorate([
     (0, common_1.Controller)('chat'),
-    __metadata("design:paramtypes", [chat_service_1.ChatService])
+    __metadata("design:paramtypes", [chat_service_1.ChatService,
+        supabase_service_1.SupabaseService,
+        stack_ai_service_1.StackAIService])
 ], ChatController);
 //# sourceMappingURL=chat.controller.js.map

@@ -12,10 +12,74 @@ import {
 import { AnalyticsQueryParams } from './query-params/analytics-query-params';
 import * as FormData from 'form-data';
 import { UploadWebsitesDto } from './dto/upload-websites.dto';
+import { SupabaseService } from '../supabase/supabase.service';
 
 @Injectable()
 export class StackAIService {
-  constructor(private readonly httpService: HttpService) {}
+  constructor(
+    private readonly httpService: HttpService,
+    private readonly supabase: SupabaseService,
+  ) {}
+
+  streamQuery(data: IQueryStackAi): Observable<any> {
+    const url = `${STACK_AI_BASE_URL}/inference/v0/stream/${ORGANIZATION_ID_REFERENCE}/${FLOW_ID_REFERENCE}`;
+
+    return new Observable((observer) => {
+      this.httpService
+        .post(url, data, {
+          headers: {
+            Authorization: `Bearer ${STACK_PUBLIC_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          responseType: 'stream',
+        })
+        .subscribe({
+          next: (response) => {
+            const stream = response.data;
+            stream.setEncoding('utf8');
+
+            let buffer = '';
+
+            stream.on('data', (chunk: string) => {
+              buffer += chunk;
+
+              const lines = buffer.split('\n');
+              buffer = lines.pop() || '';
+
+              for (const line of lines) {
+                try {
+                  if (line.trim() === '') continue;
+                  const parsed = JSON.parse(line);
+                  const output = parsed.outputs?.['out-0'];
+                  if (output) {
+                    // Emitir el fragmento al canal de Supabase
+
+                    observer.next(output);
+                  }
+                } catch (err) {
+                  console.warn('Línea no parseable:', err);
+                }
+              }
+            });
+
+            stream.on('end', () => {
+              // Emitir evento de finalización
+
+              observer.complete();
+            });
+
+            stream.on('error', (err) => {
+              // Emitir evento de error
+
+              observer.error(err);
+            });
+          },
+          error: (err) => {
+            observer.error(err);
+          },
+        });
+    });
+  }
 
   async query(data: IQueryStackAi) {
     const url = `${STACK_AI_BASE_URL}/inference/v0/run/${ORGANIZATION_ID_REFERENCE}/${FLOW_ID_REFERENCE}`;
@@ -147,66 +211,5 @@ export class StackAIService {
       );
       throw new ServiceUnavailableException('Error en la STACK AI API');
     }
-  }
-
-  streamQuery(data: IQueryStackAi): Observable<any> {
-    const url = `${STACK_AI_BASE_URL}/inference/v0/stream/${ORGANIZATION_ID_REFERENCE}/${FLOW_ID_REFERENCE}`;
-
-    return new Observable((observer) => {
-      console.log('stream...');
-
-      this.httpService
-        .post(url, data, {
-          headers: {
-            Authorization: `Bearer ${STACK_PUBLIC_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          responseType: 'stream',
-        })
-        .subscribe({
-          next: (response) => {
-            const stream = response.data;
-            stream.setEncoding('utf8');
-
-            let buffer = '';
-
-            stream.on('data', (chunk: string) => {
-              buffer += chunk;
-
-              const lines = buffer.split('\n');
-
-              buffer = lines.pop() || '';
-
-              for (const line of lines) {
-                try {
-                  if (line.trim() === '') continue;
-                  const parsed = JSON.parse(line);
-                  const output = parsed.outputs?.['out-0'];
-                  if (output) {
-                    observer.next(output);
-                  }
-                } catch (err) {
-                  console.log(err);
-                  console.warn('Linea no parseable');
-                }
-              }
-            });
-
-            stream.on('end', () => {
-              console.log('Stream finalizado');
-              observer.complete();
-            });
-
-            stream.on('error', (err) => {
-              console.error('Error:', err);
-              observer.error(err);
-            });
-          },
-          error: (err) => {
-            console.error('Error:', err);
-            observer.error(err);
-          },
-        });
-    });
   }
 }
