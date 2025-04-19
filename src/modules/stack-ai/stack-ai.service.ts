@@ -1,6 +1,9 @@
-import { Injectable, ServiceUnavailableException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
-import { IQueryStackAi } from './interfaces/query-stack-ai.interface';
 import { firstValueFrom, lastValueFrom, Observable } from 'rxjs';
 import { STACK_AI_BASE_URL } from './constants/stack-ai-base-url';
 import { FLOW_ID_REFERENCE } from './constants/flow-id-reference';
@@ -12,14 +15,11 @@ import {
 import { AnalyticsQueryParams } from './query-params/analytics-query-params';
 import * as FormData from 'form-data';
 import { UploadWebsitesDto } from './dto/upload-websites.dto';
-import { SupabaseService } from '../supabase/supabase.service';
+import { IQueryStackAi } from './interfaces/query-stack-ai.interface';
 
 @Injectable()
 export class StackAIService {
-  constructor(
-    private readonly httpService: HttpService,
-    private readonly supabase: SupabaseService,
-  ) {}
+  constructor(private readonly httpService: HttpService) {}
 
   streamQuery(data: IQueryStackAi): Observable<any> {
     const url = `${STACK_AI_BASE_URL}/inference/v0/stream/${ORGANIZATION_ID_REFERENCE}/${FLOW_ID_REFERENCE}`;
@@ -52,8 +52,6 @@ export class StackAIService {
                   const parsed = JSON.parse(line);
                   const output = parsed.outputs?.['out-0'];
                   if (output) {
-                    // Emitir el fragmento al canal de Supabase
-
                     observer.next(output);
                   }
                 } catch (err) {
@@ -63,14 +61,10 @@ export class StackAIService {
             });
 
             stream.on('end', () => {
-              // Emitir evento de finalización
-
               observer.complete();
             });
 
             stream.on('error', (err) => {
-              // Emitir evento de error
-
               observer.error(err);
             });
           },
@@ -102,9 +96,9 @@ export class StackAIService {
   }
 
   async getDocuments() {
-    const url = `${STACK_AI_BASE_URL}/indexing/v0/${FLOW_ID_REFERENCE}/${ORGANIZATION_ID_REFERENCE}/knowledgebase-1`;
+    const url = `${STACK_AI_BASE_URL}/documents/${ORGANIZATION_ID_REFERENCE}/${FLOW_ID_REFERENCE}/eddie.ehc04@gmail.com/doc-0`;
     try {
-      const response = await firstValueFrom(
+      const response = await lastValueFrom(
         this.httpService.get(url, {
           headers: {
             Authorization: `Bearer ${STACK_PRIVATE_API_KEY}`,
@@ -113,15 +107,17 @@ export class StackAIService {
         }),
       );
 
+      console.log(response);
       return response.data;
     } catch (error) {
+      console.log(error);
       console.error('Error en la STACK AI API:', error.message);
       throw new ServiceUnavailableException('Error en la STACK AI API');
     }
   }
 
-  async uploadDocument(files: Express.Multer.File[]) {
-    const url = `${STACK_AI_BASE_URL}/indexing/v0/documents/6535facc5607359530e08113/${ORGANIZATION_ID_REFERENCE}/knowledgebase-1`;
+  async uploadDocuments(files: Express.Multer.File[]) {
+    const url = `${STACK_AI_BASE_URL}/documents/${ORGANIZATION_ID_REFERENCE}/${FLOW_ID_REFERENCE}/eddie.ehc04@gmail.com/doc-0`;
     try {
       const form = new FormData();
 
@@ -140,6 +136,38 @@ export class StackAIService {
 
       return response.data;
     } catch (error) {
+      console.log(error);
+      console.error(
+        'Error en la STACK AI API:',
+        error?.response?.data || error.message,
+      );
+      throw new ServiceUnavailableException('Error en la STACK AI API');
+    }
+  }
+
+  async uploadDocument(file: Express.Multer.File) {
+    if (!file || !file.buffer) {
+      throw new BadRequestException('No se recibió ningún archivo válido');
+    }
+
+    const url = `${STACK_AI_BASE_URL}/documents/${ORGANIZATION_ID_REFERENCE}/${FLOW_ID_REFERENCE}/eddie.ehc04@gmail.com/doc-0`;
+
+    try {
+      const form = new FormData();
+      form.append('file', file.buffer, file.originalname);
+
+      const response = await firstValueFrom(
+        this.httpService.post(url, form, {
+          headers: {
+            Authorization: `Bearer ${STACK_PRIVATE_API_KEY}`,
+            ...form.getHeaders(),
+          },
+        }),
+      );
+
+      return response.data;
+    } catch (error) {
+      console.log(error);
       console.error(
         'Error en la STACK AI API:',
         error?.response?.data || error.message,

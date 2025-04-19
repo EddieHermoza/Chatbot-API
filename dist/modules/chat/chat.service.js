@@ -16,18 +16,6 @@ let ChatService = class ChatService {
     constructor(aiService) {
         this.aiService = aiService;
     }
-    doQuery({ userId, query }) {
-        return this.aiService.query({
-            userId,
-            'in-0': query,
-        });
-    }
-    doSreamQuery({ userId, query }) {
-        return this.aiService.streamQuery({
-            userId,
-            'in-0': query,
-        });
-    }
 };
 exports.ChatService = ChatService;
 exports.ChatService = ChatService = __decorate([

@@ -5,7 +5,7 @@ import {
   UploadedFile,
 } from '@nestjs/common';
 
-export const UploadFile = () => {
+export const UploadFiles = () => {
   return UploadedFiles(
     new ParseFilePipe({
       fileIsRequired: false,
@@ -14,7 +14,7 @@ export const UploadFile = () => {
   );
 };
 
-export const UploadFiles = () => {
+export const UploadFile = () => {
   return UploadedFile(
     new ParseFilePipe({
       fileIsRequired: false,

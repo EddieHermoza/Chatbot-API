@@ -27,8 +27,8 @@ let StackAIController = class StackAIController {
     getDocuments() {
         return this.Stack.getDocuments();
     }
-    uploadDocuments(files) {
-        return this.Stack.uploadDocument(files);
+    uploadDocument(file) {
+        return this.Stack.uploadDocument(file);
     }
     getWebsites() {
         return this.Stack.getWebsites();
@@ -49,14 +49,14 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], StackAIController.prototype, "getDocuments", null);
 __decorate([
-    (0, file_interceptor_decorator_1.UseFilesInterceptor)(),
-    (0, common_1.Post)('/upload-documents'),
+    (0, file_interceptor_decorator_1.UseFileInterceptor)(),
+    (0, common_1.Post)('/upload-document'),
     openapi.ApiResponse({ status: 201, type: Object }),
     __param(0, (0, upload_images_decorator_1.UploadFile)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Array]),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", void 0)
-], StackAIController.prototype, "uploadDocuments", null);
+], StackAIController.prototype, "uploadDocument", null);
 __decorate([
     (0, common_1.Get)('/websites'),
     openapi.ApiResponse({ status: 200, type: Object }),

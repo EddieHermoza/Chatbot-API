@@ -12,12 +12,13 @@ const axios_1 = require("@nestjs/axios");
 const stack_ai_service_1 = require("./stack-ai.service");
 const stack_ai_controller_1 = require("./stack-ai.controller");
 const supabase_service_1 = require("../supabase/supabase.service");
+const platform_express_1 = require("@nestjs/platform-express");
 let StackAIModule = class StackAIModule {
 };
 exports.StackAIModule = StackAIModule;
 exports.StackAIModule = StackAIModule = __decorate([
     (0, common_1.Module)({
-        imports: [axios_1.HttpModule],
+        imports: [axios_1.HttpModule, platform_express_1.MulterModule.register()],
         providers: [stack_ai_service_1.StackAIService, supabase_service_1.SupabaseService],
         controllers: [stack_ai_controller_1.StackAIController],
         exports: [stack_ai_service_1.StackAIService],
