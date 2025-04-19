@@ -18,11 +18,74 @@ const flow_id_reference_1 = require("./constants/flow-id-reference");
 const organization_id_reference_1 = require("./constants/organization-id-reference");
 const api_keys_1 = require("./constants/api-keys");
 const FormData = require("form-data");
-const supabase_service_1 = require("../supabase/supabase.service");
 let StackAIService = class StackAIService {
-    constructor(httpService, supabase) {
+    constructor(httpService) {
         this.httpService = httpService;
-        this.supabase = supabase;
+    }
+    streamQuery(data) {
+        const url = `${stack_ai_base_url_1.STACK_AI_BASE_URL}/inference/v0/stream/${organization_id_reference_1.ORGANIZATION_ID_REFERENCE}/${flow_id_reference_1.FLOW_ID_REFERENCE}`;
+        return new rxjs_1.Observable((observer) => {
+            this.httpService
+                .post(url, data, {
+                headers: {
+                    Authorization: `Bearer ${api_keys_1.STACK_PUBLIC_API_KEY}`,
+                    'Content-Type': 'application/json',
+                },
+                responseType: 'stream',
+            })
+                .subscribe({
+                next: async (response) => {
+                    const stream = response.data;
+                    stream.setEncoding('utf8');
+                    let buffer = '';
+                    stream.on('data', (chunk) => {
+                        buffer += chunk;
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop() || '';
+                        for (const line of lines) {
+                            try {
+                                if (line.trim() === '')
+                                    continue;
+                                const parsed = JSON.parse(line);
+                                const output = parsed.outputs?.['out-0'];
+                                if (output) {
+                                    observer.next(output);
+                                }
+                            }
+                            catch (err) {
+                                console.warn('Línea no parseable:', err);
+                            }
+                        }
+                    });
+                    stream.on('end', () => {
+                        observer.complete();
+                    });
+                    stream.on('error', (err) => {
+                        observer.error(err);
+                    });
+                },
+                error: (err) => {
+                    observer.error(err);
+                },
+            });
+        });
+    }
+    async query(data) {
+        const url = `${stack_ai_base_url_1.STACK_AI_BASE_URL}/inference/v0/run/${organization_id_reference_1.ORGANIZATION_ID_REFERENCE}/${flow_id_reference_1.FLOW_ID_REFERENCE}`;
+        try {
+            const response = await (0, rxjs_1.lastValueFrom)(this.httpService.post(url, data, {
+                headers: {
+                    Authorization: `Bearer ${api_keys_1.STACK_PUBLIC_API_KEY}`,
+                    'Content-Type': 'application/json',
+                },
+            }));
+            return response.data;
+        }
+        catch (error) {
+            console.log(error);
+            console.error('Error en la StackAI API:', error.message);
+            throw new common_1.ServiceUnavailableException('Error en la StackAI API');
+        }
     }
     async getDocuments() {
         const url = `${stack_ai_base_url_1.STACK_AI_BASE_URL}/documents/${organization_id_reference_1.ORGANIZATION_ID_REFERENCE}/${flow_id_reference_1.FLOW_ID_REFERENCE}/eddie.ehc04@gmail.com/doc-0`;
@@ -139,7 +202,6 @@ let StackAIService = class StackAIService {
 exports.StackAIService = StackAIService;
 exports.StackAIService = StackAIService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [axios_1.HttpService,
-        supabase_service_1.SupabaseService])
+    __metadata("design:paramtypes", [axios_1.HttpService])
 ], StackAIService);
 //# sourceMappingURL=stack-ai.service.js.map

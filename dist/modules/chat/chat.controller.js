@@ -13,12 +13,10 @@ exports.ChatController = void 0;
 const openapi = require("@nestjs/swagger");
 const common_1 = require("@nestjs/common");
 const chat_service_1 = require("./chat.service");
-const supabase_service_1 = require("../supabase/supabase.service");
 const stack_ai_service_1 = require("../stack-ai/stack-ai.service");
 let ChatController = class ChatController {
-    constructor(chatService, supabaseService, stackAIService) {
+    constructor(chatService, stackAIService) {
         this.chatService = chatService;
-        this.supabaseService = supabaseService;
         this.stackAIService = stackAIService;
     }
 };
@@ -26,7 +24,6 @@ exports.ChatController = ChatController;
 exports.ChatController = ChatController = __decorate([
     (0, common_1.Controller)('chat'),
     __metadata("design:paramtypes", [chat_service_1.ChatService,
-        supabase_service_1.SupabaseService,
         stack_ai_service_1.StackAIService])
 ], ChatController);
 //# sourceMappingURL=chat.controller.js.map
